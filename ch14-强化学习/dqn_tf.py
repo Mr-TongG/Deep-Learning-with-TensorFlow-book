@@ -91,16 +91,16 @@ def train(q, q_target, memory, optimizer):
         s, a, r, s_prime, done_mask = memory.sample(batch_size)
         with tf.GradientTape() as tape:
             # s: [b, 4]
-            q_out = q(s)  # 得到Q(s,a)的分布
+            q_out = q(s)  # 得到Q(s,a)的分布   ##q_out.shape = (32,2)，每一行为两个action的Q值
             # 由于TF的gather_nd与pytorch的gather功能不一样，需要构造
             # gather_nd需要的坐标参数，indices:[b, 2]
             # pi_a = pi.gather(1, a) # pytorch只需要一行即可实现
-            indices = tf.expand_dims(tf.range(a.shape[0]), axis=1)
-            indices = tf.concat([indices, a], axis=1)
-            q_a = tf.gather_nd(q_out, indices) # 动作的概率值, [b]
-            q_a = tf.expand_dims(q_a, axis=1) # [b]=> [b,1]
+            indices = tf.expand_dims(tf.range(a.shape[0]), axis=1) ## indices.shape = (32,1),为从0-31的序列
+            indices = tf.concat([indices, a], axis=1) # indices.shape = (32,2)  ## 第一列为index索引，第二列为q网络选择的action（0或1）
+            q_a = tf.gather_nd(q_out, indices) # 动作的概率值, shape为[b]   ## 根据indices中选择的action，从q_out中挑选出它的Q值
+            q_a = tf.expand_dims(q_a, axis=1) # [b]=> [b,1]   ## 总之q_a为预测网络根据s预测出来的Q值
             # 得到Q(s',a)的最大值，它来自影子网络！ [b,4]=>[b,2]=>[b,1]
-            max_q_prime = tf.reduce_max(q_target(s_prime),axis=1,keepdims=True)
+            max_q_prime = tf.reduce_max(q_target(s_prime),axis=1,keepdims=True)    ## 
             # 构造Q(s,a_t)的目标值，来自贝尔曼方程
             target = r + gamma * max_q_prime * done_mask
             # 计算Q(s,a_t)与目标值的误差
